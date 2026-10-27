@@ -6,7 +6,7 @@ and for following a real league (ESPN or Sleeper) week by week.
 ## Setup
 
 ```bash
-git clone https://github.com/paultimfv/sunday-scorebook.git && cd sunday-scorebook
+git clone https://github.com/paultimfv/fantasyfootball.git && cd fantasyfootball
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest            # 17 tests, all offline
