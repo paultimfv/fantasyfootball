@@ -100,7 +100,7 @@ def cmd_site(args) -> None:
     from . import site
 
     season = args.season or _season_week(args)[0]
-    print(f"wrote {site.build(season, Path(args.out))}")
+    print(f"wrote {site.build(season, Path(args.out), standalone=not args.fragment)}")
 
 
 def main(argv=None) -> None:
@@ -152,7 +152,8 @@ def main(argv=None) -> None:
     sp = sub.add_parser("site", help="build the web page with the latest stats")
     sp.add_argument("--season", type=int)
     sp.add_argument("--week", type=int, help=argparse.SUPPRESS)
-    sp.add_argument("--out", default="web/index.html")
+    sp.add_argument("--out", default="public/index.html", help="public/ is what Vercel serves")
+    sp.add_argument("--fragment", action="store_true", help="page body only, for hosts that add their own <html>")
     sp.set_defaults(fn=cmd_site)
 
     args = p.parse_args(argv)

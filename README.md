@@ -41,13 +41,23 @@ would have won with their best lineup. That's most of what a group chat argues a
 ## Web page
 
 ```bash
-python -m ff site          # writes web/index.html with the latest stats
+python -m ff site          # writes public/index.html with the latest stats
 ```
 
 One self-contained HTML file: weekly leaders split into volume vs touchdown points,
 a per-player scoring breakdown and season chart, the rulebook and the glossary.
 Open it in a browser. It scores in the browser from the same rules as `ff/scoring.py`,
-so switching formats needs no rebuild. Rerun the command after each NFL week.
+so switching formats needs no rebuild.
+
+## Hosting (Vercel)
+
+`public/index.html` is committed, and `vercel.json` tells Vercel to serve `public/` as a
+static site with no build step. Import this repo at vercel.com/new, name the project
+`fantasy-league`, and every push to `main` redeploys.
+
+The stats refresh themselves: `.github/workflows/refresh.yml` rebuilds the page every
+Tuesday and Friday morning and commits it when anything changed, which triggers a
+redeploy. Run it by hand from the repo's Actions tab ("Refresh stats", Run workflow).
 
 ## Getting your friends' ESPN league
 

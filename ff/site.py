@@ -58,9 +58,21 @@ def payload(season: int) -> dict:
     }
 
 
-def build(season: int, out: Path) -> Path:
+# The template is a page body. Hosts like Vercel serve the file as-is, so it
+# needs a real document around it, or browsers render it in quirks mode.
+_DOC_START = """<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+"""
+
+
+def build(season: int, out: Path, standalone: bool = True) -> Path:
     data = json.dumps(payload(season), separators=(",", ":"))
     html = TEMPLATE.read_text().replace("/*__DATA__*/null", data)
+    if standalone:
+        html = _DOC_START + html + "\n</html>\n"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html)
     return out
