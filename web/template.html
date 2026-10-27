@@ -115,6 +115,12 @@ svg .sel { stroke: var(--ink); stroke-width: 1.5; fill: none; }
 dl { margin: 0; display: grid; gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 6px; }
 dt { font-weight: 600; }
 dd { margin: 2px 0 0; color: var(--muted); max-width: 62ch; }
+.sports { display: flex; gap: 4px; margin-bottom: 14px; }
+.sports a, .sports span { font: 600 0.85rem var(--body); text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); text-decoration: none; }
+.sports span { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.sports a:hover { color: var(--ink); border-color: var(--ink); }
+.sports a:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
+#gq { font: 1rem var(--body); padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
 footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 4px; }
 footer a { color: var(--turf); }
 
@@ -125,9 +131,10 @@ footer a { color: var(--turf); }
 
 <div class="wrap">
   <header>
+    <nav class="sports" id="nav" aria-label="Sport"></nav>
     <span class="label" id="eyebrow"></span>
-    <h1>Sunday Scorebook</h1>
-    <p class="lede">Every fantasy point from real NFL games, explained. Pick a week and a scoring format, then click any player to see exactly how his points added up and whether they came from volume (repeatable) or touchdowns (luck-heavy).</p>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
     <div class="hashes" aria-hidden="true"></div>
   </header>
 
@@ -140,8 +147,8 @@ footer a { color: var(--turf); }
   <div class="main">
     <section class="panel" aria-labelledby="lb-title">
       <div class="panel-head">
-        <h2 id="lb-title">Top scorers</h2>
-        <div class="legend"><span><i class="sw vol"></i>volume points</span><span><i class="sw td"></i>touchdown points</span></div>
+        <div><h2 id="lb-title">Top scorers</h2><span class="label" id="lb-sub"></span></div>
+        <div class="legend"><span><i class="sw vol"></i><span id="vol-label"></span></span><span><i class="sw td"></i><span id="luck-label"></span></span></div>
       </div>
       <div class="scroll">
         <table class="lb">
@@ -172,38 +179,40 @@ footer a { color: var(--turf); }
   <div class="lower">
     <section class="panel" aria-labelledby="rules-title">
       <h2 id="rules-title">The rulebook</h2>
-      <p class="muted">Points per unit in each format. Your friends' league uses one of these, possibly with tweaks. The only difference between formats is catches.</p>
+      <p class="muted" id="rule-intro"></p>
       <div class="scroll"><table class="lb rules" id="rules"></table></div>
-      <p class="note vol">Rule of thumb: <b>targets and carries repeat week to week, touchdowns don't.</b> A player whose points are mostly orange had a lucky week. Mostly green means the opportunity is real.</p>
+      <p class="note vol" id="rule-note"></p>
     </section>
     <section class="panel" aria-labelledby="gl-title">
       <div class="panel-head"><h2 id="gl-title">Group chat glossary</h2></div>
-      <input id="gq" class="search-input" placeholder="Search terms (FAAB, handcuff...)" aria-label="Search glossary" style="font:1rem var(--body);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)">
+      <input id="gq" placeholder="Search terms" aria-label="Search glossary">
       <dl id="gloss"></dl>
     </section>
   </div>
 
   <footer>
     <span id="foot"></span>
-    <span>Stats: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener">nflverse</a>. Scoring checked against nflverse's own fantasy points. Kickers and team defenses aren't included yet.</span>
+    <span id="source"></span>
   </footer>
 </div>
 
 <script>
 const D = /*__DATA__*/null;
-const FMTS = [["standard", "Standard"], ["half", "Half PPR"], ["ppr", "PPR"]];
-const POS = ["All", "QB", "RB", "WR", "TE"];
+const FMTS = D.formats;
+const POS = D.positions;
 const R = D.rules, NR = R.length, U = 4 + NR;
-const TD_RULES = R.map((r, i) => r.label.includes("TD") ? i : -1).filter(i => i >= 0);
+const LUCK = R.map((r, i) => r.luck ? i : -1).filter(i => i >= 0);
 const weeks = [...new Set(D.rows.map(r => r[1]))].sort((a, b) => a - b);
 const lastWeek = weeks[weeks.length - 1];
+const weekLabel = w => D.week_labels[w] || `Week ${w}`;
 
 const store = {
   get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
-const S = { week: lastWeek, fmt: store.get("ss-fmt", "ppr"), pos: "All", player: null };
-if (!FMTS.some(f => f[0] === S.fmt)) S.fmt = "ppr";
+const FMT_KEY = `ss-fmt-${D.sport}`;
+const S = { week: lastWeek, fmt: store.get(FMT_KEY, D.default_fmt), pos: "All", player: null };
+if (!FMTS.some(f => f[0] === S.fmt)) S.fmt = D.default_fmt;
 
 const byPlayer = new Map();
 for (const r of D.rows) { if (!byPlayer.has(r[0])) byPlayer.set(r[0], []); byPlayer.get(r[0]).push(r); }
@@ -211,16 +220,17 @@ for (const r of D.rows) { if (!byPlayer.has(r[0])) byPlayer.set(r[0], []); byPla
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt1 = x => (Math.round(x * 10) / 10).toFixed(1);
 const cnt = x => Number.isInteger(x) ? String(x) : fmt1(x);
-const usage = (r, k) => r[U + D.usage.indexOf(k)] || 0;
+const usage = (r, k) => r[U + D.usage.findIndex(u => u.key === k)] || 0;
+const gamesIn = rows => D.usage.some(u => u.games) ? rows.reduce((a, r) => a + usage(r, "games"), 0) : rows.length;
 
 function score(r) {
-  let total = 0, td = 0;
+  let total = 0, luck = 0;
   for (let i = 0; i < NR; i++) {
     const p = r[4 + i] * R[i].pts[S.fmt];
     total += p;
-    if (TD_RULES.includes(i)) td += p;
+    if (LUCK.includes(i)) luck += p;
   }
-  return { total: Math.round(total * 100) / 100, td, vol: total - td };
+  return { total: Math.round(total * 100) / 100, luck, vol: total - luck };
 }
 
 function seg(el, items, key, onPick) {
@@ -236,7 +246,7 @@ function seg(el, items, key, onPick) {
 
 function renderControls() {
   seg(document.getElementById("weeks"), weeks.map(w => [w, String(w)]), "week", () => {});
-  seg(document.getElementById("fmts"), FMTS, "fmt", v => store.set("ss-fmt", v));
+  seg(document.getElementById("fmts"), FMTS, "fmt", v => store.set(FMT_KEY, v));
   seg(document.getElementById("poss"), POS.map(p => [p, p]), "pos", () => {});
 }
 
@@ -248,12 +258,12 @@ function renderLeaders() {
   const tb = document.getElementById("lb");
   tb.innerHTML = rows.map(({ r, s }, i) => {
     const [name, pos] = D.players[r[0]];
-    const v = Math.max(0, s.vol), t = Math.max(0, s.td);
+    const v = Math.max(0, s.vol), t = Math.max(0, s.luck);
     const share = s.total > 0 ? Math.round(100 * t / s.total) : 0;
     return `<tr tabindex="0" data-p="${r[0]}" aria-selected="${r[0] === S.player}">
       <td class="rk num">${i + 1}</td>
-      <td class="who"><b>${esc(name)}</b><span>${pos} ${esc(r[2])}</span></td>
-      <td><div class="split" title="${share}% from touchdowns"><i class="v" style="width:${100 * v / max}%"></i><i class="t" style="width:${100 * t / max}%"></i></div><span class="tdp">${share}% TD</span></td>
+      <td class="who"><b>${esc(name)}</b><span>${esc(pos)} ${esc(r[2])}</span></td>
+      <td><div class="split" title="${share}% from ${esc(D.luck_word)}"><i class="v" style="width:${100 * v / max}%"></i><i class="t" style="width:${100 * t / max}%"></i></div><span class="tdp">${share}% ${esc(D.luck_word)}</span></td>
       <td class="pts num">${fmt1(s.total)}</td></tr>`;
   }).join("") || `<tr><td colspan="4" class="muted">No games recorded for this week yet.</td></tr>`;
   tb.querySelectorAll("tr[data-p]").forEach(tr => {
@@ -266,14 +276,17 @@ function renderLeaders() {
     tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
   });
   document.getElementById("lb-title").textContent = `Week ${S.week} top scorers`;
+  const sub = weekLabel(S.week);
+  document.getElementById("lb-sub").textContent = sub === `Week ${S.week}` ? "" : sub;
 }
 
-function verdict(s) {
-  if (s.total <= 0) return ["", "A rough day: no positive points."];
-  const share = s.td / s.total;
-  if (share >= 0.5) return ["", `${Math.round(share * 100)}% of these points came from touchdowns. That's a boom week, and touchdowns are the hardest thing to repeat. Expect less next week unless his usage backs it up.`];
-  if (share === 0) return ["vol", "No touchdowns: every point came from volume. That's the repeatable kind. If he scores a TD next week, he jumps."];
-  return ["vol", `${Math.round(share * 100)}% of points from touchdowns, the rest from volume. A healthy mix.`];
+function verdict(s, row) {
+  if (s.total === 0 && R.some((_, i) => row[4 + i])) return ["", "Nothing this player did scores in this format. Switch formats to see his points."];
+  if (s.total <= 0) return ["", "A rough week: no positive points."];
+  const share = s.luck / s.total;
+  if (share >= 0.5) return ["", `${Math.round(share * 100)}% of these points came from ${D.luck_word}. ${D.boom}`];
+  if (share === 0) return ["vol", D.zero];
+  return ["vol", `${Math.round(share * 100)}% of points from ${D.luck_word}, the rest from steady work. A healthy mix.`];
 }
 
 function renderPlayer() {
@@ -288,40 +301,38 @@ function renderPlayer() {
 
   const pw = document.getElementById("pweek");
   if (!row) {
-    pw.innerHTML = `<p class="muted">Didn't record a stat in week ${S.week} (bye, injury, or inactive). Pick another week or look at his season below.</p>`;
+    pw.innerHTML = `<p class="muted">No games in week ${S.week} (bye, injury, or not in the lineup). Pick another week or look at his season below.</p>`;
   } else {
     const s = score(row);
-    const lines = R.map((rule, i) => ({ rule, i, n: row[4 + i] }))
-      .filter(x => x.n)
-      .map(x => `<tr class="${TD_RULES.includes(x.i) ? "td" : ""}"><td class="n">${cnt(x.n)}</td><td>&nbsp;${esc(x.rule.label)}</td><td class="n">&times; ${x.rule.pts[S.fmt]}</td><td class="p">${fmt1(rule_pts(x))}</td></tr>`).join("");
-    const u = [];
-    if (usage(row, "attempts")) u.push(`${usage(row, "completions")}/${usage(row, "attempts")} passing`);
-    if (usage(row, "carries")) u.push(`${usage(row, "carries")} carries`);
-    if (usage(row, "targets")) {
-      const ts = usage(row, "target_share");
-      u.push(`${usage(row, "targets")} targets${ts ? ` (${Math.round(ts * 100)}% of team's)` : ""}`);
-    }
-    const [cls, text] = verdict(s);
+    const lines = R.map((rule, i) => ({ rule, i, n: row[4 + i] })).filter(x => x.n)
+      .map(x => `<tr class="${LUCK.includes(x.i) ? "td" : ""}"><td class="n">${cnt(x.n)}</td><td>&nbsp;${esc(x.rule.label)}</td><td class="n">&times; ${x.rule.pts[S.fmt]}</td><td class="p">${fmt1(x.n * x.rule.pts[S.fmt])}</td></tr>`).join("");
+    const chips = D.usage.map(u => {
+      const v = usage(row, u.key);
+      if (!v) return "";
+      return `<span class="chip">${u.pct ? Math.round(v * 100) + "%" : cnt(v)} ${esc(u.label)}</span>`;
+    }).join("");
+    const [cls, text] = verdict(s, row);
     pw.innerHTML = `<div style="display:grid;gap:12px">
-      <div class="panel-head"><h3>Week ${S.week} vs ${esc(row[3])}</h3><span class="label">${FMTS.find(f => f[0] === S.fmt)[1]}</span></div>
+      <div class="panel-head"><h3>Week ${S.week}, ${esc(row[3])}</h3><span class="label">${esc(FMTS.find(f => f[0] === S.fmt)[1])}</span></div>
       <div class="scroll"><table class="math">${lines}<tr class="tot"><td></td><td>&nbsp;total</td><td></td><td class="p">${fmt1(s.total)}</td></tr></table></div>
-      <div class="chips">${u.map(x => `<span class="chip">${esc(x)}</span>`).join("")}</div>
-      <p class="note ${cls}">${text}</p></div>`;
+      <div class="chips">${chips}</div>
+      <p class="note ${cls}">${esc(text)}</p></div>`;
   }
 
   renderChart(games);
 
   const scored = games.map(score);
-  const tot = scored.reduce((a, s) => a + s.total, 0), td = scored.reduce((a, s) => a + Math.max(0, s.td), 0);
-  const avg = k => games.length ? games.reduce((a, r) => a + usage(r, k), 0) / games.length : 0;
-  const st = [["games", games.length], ["pts / game", games.length ? fmt1(tot / games.length) : "0"], ["from TDs", tot > 0 ? Math.round(100 * td / tot) + "%" : "0%"]];
-  if (pos === "QB") st.push(["pass att / game", fmt1(avg("attempts"))]);
-  if (pos === "RB" || pos === "QB") st.push(["carries / game", fmt1(avg("carries"))]);
-  if (pos !== "QB") st.push(["targets / game", fmt1(avg("targets"))]);
-  document.getElementById("pstats").innerHTML = st.map(([k, v]) => `<div class="stat"><b class="num">${v}</b><span>${k}</span></div>`).join("");
+  const tot = scored.reduce((a, s) => a + s.total, 0), luck = scored.reduce((a, s) => a + Math.max(0, s.luck), 0);
+  const gp = gamesIn(games);
+  const st = [["games", gp], ["pts / game", gp ? fmt1(tot / gp) : "0"], [`from ${D.luck_word}`, tot > 0 ? Math.round(100 * luck / tot) + "%" : "0%"]];
+  for (const u of D.usage) {
+    if (!u.avg) continue;
+    const sum = games.reduce((a, r) => a + usage(r, u.key), 0);
+    if (sum) st.push([`${u.label} / game`, fmt1(sum / gp)]);
+  }
+  document.getElementById("pstats").innerHTML = st.map(([k, v]) => `<div class="stat"><b class="num">${v}</b><span>${esc(k)}</span></div>`).join("");
   document.getElementById("q").value = "";
 }
-function rule_pts(x) { return x.n * x.rule.pts[S.fmt]; }
 
 function renderChart(games) {
   const W = 400, H = 170, L = 26, B = 22, T = 16, n = weeks.length;
@@ -335,17 +346,17 @@ function renderChart(games) {
     const x = L + slot * i + (slot - bw) / 2, cx = x + bw / 2;
     g += `<text x="${cx}" y="${H - 6}" text-anchor="middle">W${d.w}</text>`;
     if (!d.s) { g += `<text x="${cx}" y="${y(0) - 4}" text-anchor="middle">-</text>`; continue; }
-    const v = Math.max(0, d.s.vol), t = Math.max(0, d.s.td);
+    const v = Math.max(0, d.s.vol), t = Math.max(0, d.s.luck);
     g += `<rect class="bv" x="${x}" width="${bw}" y="${y(v)}" height="${y(0) - y(v)}"/>`;
     g += `<rect class="bt" x="${x}" width="${bw}" y="${y(v + t)}" height="${y(v) - y(v + t)}"/>`;
     if (d.w === S.week) g += `<rect class="sel" x="${x - 3}" width="${bw + 6}" y="${y(v + t) - 3}" height="${y(0) - y(v + t) + 3}"/>`;
     g += `<text class="val" x="${cx}" y="${y(v + t) - 6}" text-anchor="middle">${fmt1(d.s.total)}</text>`;
   }
-  document.getElementById("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Fantasy points by week, split into volume and touchdown points">${g}</svg>`;
+  document.getElementById("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Fantasy points by week, split into steady and streaky points">${g}</svg>`;
 }
 
 function renderRules() {
-  const head = `<thead><tr><th>Stat</th>${FMTS.map(([k, t]) => `<th class="${k === S.fmt ? "on" : ""}">${t}</th>`).join("")}</tr></thead>`;
+  const head = `<thead><tr><th>Stat</th>${FMTS.map(([k, t]) => `<th class="${k === S.fmt ? "on" : ""}">${esc(t)}</th>`).join("")}</tr></thead>`;
   const body = R.map(r => `<tr><td>${esc(r.label)}</td>${FMTS.map(([k]) => `<td class="num ${k === S.fmt ? "on" : ""}">${r.pts[k]}</td>`).join("")}</tr>`).join("");
   document.getElementById("rules").innerHTML = head + `<tbody>${body}</tbody>`;
 }
@@ -358,14 +369,26 @@ function renderGlossary() {
 
 function render() { renderControls(); renderLeaders(); renderPlayer(); renderRules(); }
 
-document.getElementById("eyebrow").textContent = `${D.season} season, through week ${lastWeek}`;
-document.getElementById("foot").textContent = `Data built ${D.built} from ${D.rows.length.toLocaleString()} player-games.`;
+document.getElementById("nav").innerHTML = D.nav.map(([label, href, on]) =>
+  on ? `<span aria-current="page">${esc(label)}</span>` : `<a href="${esc(href)}">${esc(label)}</a>`).join("");
+document.getElementById("title").textContent = D.title;
+document.getElementById("lede").textContent = D.lede;
+document.getElementById("vol-label").textContent = D.vol_label;
+document.getElementById("luck-label").textContent = D.luck_label;
+document.getElementById("rule-intro").textContent = D.rule_intro;
+document.getElementById("rule-note").innerHTML = D.rule_note;  // our own copy, contains <b>
+const lastLabel = weekLabel(lastWeek);
+document.getElementById("eyebrow").textContent = !lastWeek ? D.season_label
+  : `${D.season_label}, through week ${lastWeek}` + (lastLabel === `Week ${lastWeek}` ? "" : ` (${lastLabel})`);
+document.getElementById("foot").textContent = `Data built ${D.built} from ${D.rows.length.toLocaleString()} player-weeks.`;
+document.getElementById("source").innerHTML = `Stats: <a href="${esc(D.source[1])}" target="_blank" rel="noopener">${esc(D.source[0])}</a>. ${esc(D.footnote)}`;
 document.getElementById("names").innerHTML = D.players.map(p => `<option value="${esc(p[0])}">`).join("");
 document.getElementById("q").addEventListener("change", e => {
   const i = D.players.findIndex(p => p[0].toLowerCase() === e.target.value.trim().toLowerCase());
   if (i >= 0) { S.player = i; render(); }
 });
 document.getElementById("gq").addEventListener("input", renderGlossary);
-render();
+if (weeks.length) render();
+else document.getElementById("lb").innerHTML = `<tr><td colspan="4" class="muted">No games played yet this season.</td></tr>`;
 renderGlossary();
 </script>

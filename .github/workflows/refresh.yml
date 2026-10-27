@@ -1,11 +1,10 @@
-# Rebuilds public/index.html with the latest NFL stats and commits it.
+# Rebuilds the pages in public/ with the latest NFL and NHL stats and commits them.
 # Vercel redeploys on every push to main, so the site updates itself.
 name: Refresh stats
 
 on:
   schedule:
-    - cron: "17 13 * * 2"  # Tuesdays, after Monday Night Football stats land
-    - cron: "17 13 * * 5"  # Fridays, after Thursday Night Football
+    - cron: "17 13 * * *"  # every morning: NHL plays almost daily, NFL stats land Tue/Fri
   workflow_dispatch:
 
 permissions:
@@ -21,10 +20,13 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
-      - run: python -m ff site
+      - run: python -m ff site --sport football
+      # hockey gets its own step so an NHL API hiccup can't block the football refresh
+      - run: python -m ff site --sport hockey
+        continue-on-error: true
       - name: Commit if the stats changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/index.html
+          git add public/
           git diff --cached --quiet || { git commit -m "Refresh stats" && git push; }

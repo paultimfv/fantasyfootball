@@ -97,10 +97,19 @@ def cmd_trending(args) -> None:
 
 
 def cmd_site(args) -> None:
+    from datetime import date
+
     from . import site
 
-    season = args.season or _season_week(args)[0]
-    print(f"wrote {site.build(season, Path(args.out), standalone=not args.fragment)}")
+    if args.sport == "hockey":
+        today = date.today()
+        # NHL seasons start in October and are named by their starting year
+        start = args.season or (today.year if today.month >= 9 else today.year - 1)
+        payload = site.hockey_payload(start)
+    else:
+        payload = site.football(args.season or _season_week(args)[0])
+    out = Path(args.out or ("public/index.html" if args.sport == "football" else f"public/{args.sport}/index.html"))
+    print(f"wrote {site.build(payload, out, standalone=not args.fragment)}")
 
 
 def main(argv=None) -> None:
@@ -150,9 +159,10 @@ def main(argv=None) -> None:
     sp.set_defaults(fn=cmd_trending)
 
     sp = sub.add_parser("site", help="build the web page with the latest stats")
-    sp.add_argument("--season", type=int)
+    sp.add_argument("--sport", choices=["football", "hockey"], default="football")
+    sp.add_argument("--season", type=int, help="for hockey, the year the season starts")
     sp.add_argument("--week", type=int, help=argparse.SUPPRESS)
-    sp.add_argument("--out", default="public/index.html", help="public/ is what Vercel serves")
+    sp.add_argument("--out", help="default: public/index.html, or public/<sport>/index.html (public/ is what Vercel serves)")
     sp.add_argument("--fragment", action="store_true", help="page body only, for hosts that add their own <html>")
     sp.set_defaults(fn=cmd_site)
 

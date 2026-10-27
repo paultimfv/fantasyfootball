@@ -111,3 +111,54 @@ def test_espn_slot_counts_expand():
 def test_glossary_lookup():
     assert "Reception" in glossary.show("ppr")
     assert "No entry" in glossary.show("zzz")
+
+
+# hockey
+
+from datetime import date
+
+from ff import hockey
+
+
+def test_hockey_espn_and_nhl_points():
+    skater = {"goals": 1, "assists": 2, "ppPoints": 1, "shots": 5, "hits": 3, "blockedShots": 2}
+    # 2 + 2 + 0.5 + 0.5 + 0.3 + 1.0
+    assert hockey.points(skater, "espn") == 6.3
+    assert hockey.points(skater, "nhl") == 3  # plain goals + assists
+
+
+def test_hockey_goalie_points():
+    goalie = {"wins": 1, "saves": 30, "goalsAgainst": 2, "shutouts": 0}
+    assert hockey.points(goalie, "espn") == 4 + 6 - 4
+    assert hockey.points(goalie, "nhl") == 0
+
+
+def test_fantasy_weeks_run_monday_to_sunday():
+    opening = date(2026, 10, 7)  # a Wednesday
+    assert hockey.week_of(date(2026, 10, 11), opening) == 1  # Sunday, same week
+    assert hockey.week_of(date(2026, 10, 12), opening) == 2  # Monday starts week 2
+    assert hockey.week_label(1, opening) == "Oct 5 to Oct 11"
+
+
+def _game(pid, day, **stats):
+    return {"player_id": pid, "name": f"P{pid}", "position": "C", "team": "TOR", "date": day,
+            **{k: stats.get(k, 0) for k in hockey.STAT_KEYS}}
+
+
+def test_games_are_summed_into_weeks():
+    games = [_game(1, "2026-10-07", goals=1, shots=3), _game(1, "2026-10-09", shots=4),
+             _game(1, "2026-10-13", assists=1), _game(2, "2026-10-08", hits=5)]
+    weekly, opening = hockey.by_week(games)
+    assert opening == date(2026, 10, 7)
+    w1 = next(w for w in weekly if w["player_id"] == 1 and w["week"] == 1)
+    assert (w1["games"], w1["goals"], w1["shots"]) == (2, 1, 7)
+    assert next(w for w in weekly if w["player_id"] == 1 and w["week"] == 2)["assists"] == 1
+    assert hockey.by_week([]) == ([], None)
+
+
+def test_hockey_api_rows_are_normalized():
+    api = {"playerId": 8478402, "gameId": 2026020001, "gameDate": "2026-10-07", "teamAbbrev": "EDM",
+           "goals": 2, "assists": None}
+    row = hockey._row(api, "Connor McDavid", "C", api)
+    assert row["position"] == "C" and row["assists"] == 0 and row["goals"] == 2 and row["date"] == "2026-10-07"
+    assert hockey._row(api, None, "L", api)["position"] == "LW"

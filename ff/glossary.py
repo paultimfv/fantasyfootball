@@ -40,3 +40,35 @@ def show(term: str | None = None) -> str:
     else:
         hits = TERMS
     return "\n\n".join(f"{k}\n  {v}" for k, v in hits.items())
+
+
+HOCKEY_TERMS = {
+    "points league": "Every stat is worth fantasy points (a goal 2, a shot 0.1...) and the higher total "
+    "wins the week. ESPN's default. Easiest way to start.",
+    "categories (H2H cats)": "Instead of one points total, you compete in separate stats: goals, assists, "
+    "shots, hits, wins, save %... Win more categories than your opponent and you win the week. Yahoo's default.",
+    "roto": "Season-long categories. You're ranked in each stat across the whole league, no weekly matchups.",
+    "PPP": "Power-play points: goals and assists scored with the man advantage. Being on a team's first "
+    "power-play unit (PP1) is one of the best fantasy signals there is.",
+    "SOG": "Shots on goal. The best predictor of future goals, and worth points on their own in most leagues.",
+    "HIT / BLK": "Hits and blocked shots. Grinders and stay-at-home defensemen who barely score can still "
+    "be valuable in leagues that count these. Fantasy players call them 'bangers'.",
+    "shooting %": "Goals divided by shots. League average is around 10%. A forward at 25% over a few weeks "
+    "will cool off; one with lots of shots and no goals is 'due'. This is the hockey version of TD luck.",
+    "games played / schedule": "Players only score when their team plays. Some weeks a team plays 4 games, "
+    "others 2. Picking players with more games that week is a big, legal edge.",
+    "streaming": "Picking up a player (often a goalie) just for his games this week, then dropping him. "
+    "Common with goalies who have favorable starts.",
+    "goalie starts": "Goalies only score when they start. Backups play maybe 1 game in 3, and teams often "
+    "rest the starter on the second night of a back-to-back.",
+    "back-to-back": "A team playing two days in a row. The starting goalie usually sits one of them.",
+    "multi-position eligibility": "A player listed as C/LW can fill either slot. Flexibility makes "
+    "lineups easier to set, so it adds value.",
+    "deployment": "How a coach uses a player: line (top-6 or bottom-6), power-play unit, ice time. "
+    "Deployment changes are early warnings of value going up or down.",
+    "waivers": "Same as any fantasy sport: claiming players nobody owns. In hockey this happens all season "
+    "because hot streaks and injuries come fast.",
+    "IR": "Injured reserve slot. Stash a hurt player without using a bench spot.",
+    "PDO": "Team shooting % plus save %. Hovers near 100 in the long run. A team far above 100 is "
+    "probably getting lucky and its players' production may fade.",
+}

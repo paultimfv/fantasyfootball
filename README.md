@@ -41,7 +41,8 @@ would have won with their best lineup. That's most of what a group chat argues a
 ## Web page
 
 ```bash
-python -m ff site          # writes public/index.html with the latest stats
+python -m ff site                  # football page: public/index.html
+python -m ff site --sport hockey   # hockey page:   public/hockey/index.html (NHL stats API)
 ```
 
 One self-contained HTML file: weekly leaders split into volume vs touchdown points,
@@ -55,9 +56,8 @@ so switching formats needs no rebuild.
 static site with no build step. Import this repo at vercel.com/new, name the project
 `fantasy-league`, and every push to `main` redeploys.
 
-The stats refresh themselves: `.github/workflows/refresh.yml` rebuilds the page every
-Tuesday and Friday morning and commits it when anything changed, which triggers a
-redeploy. Run it by hand from the repo's Actions tab ("Refresh stats", Run workflow).
+The stats refresh themselves: `.github/workflows/refresh.yml` rebuilds the pages every
+morning and commits them when anything changed, which triggers a redeploy. Run it by hand from the repo's Actions tab ("Refresh stats", Run workflow).
 
 ## Getting your friends' ESPN league
 
@@ -98,7 +98,8 @@ ff/recap.py     provider-neutral weekly recap
 ff/espn.py      ESPN adapter
 ff/sleeper.py   Sleeper adapter
 ff/glossary.py  the vocabulary
-ff/site.py      builds the web page
+ff/hockey.py    NHL stats API, ESPN hockey scoring, Monday-Sunday fantasy weeks
+ff/site.py      builds the web pages (one template, a payload per sport)
 ff/cli.py       commands
 web/template.html  the web page (data is injected by site.py)
 ```
