@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "17 13 * * *"  # every morning: NHL plays almost daily, NFL stats land Tue/Fri
   workflow_dispatch:
+  push:  # rebuild the pages whenever the code or template changes
+    branches: [main]
+    paths: ["ff/**", "web/**", "requirements.txt", ".github/workflows/refresh.yml"]
 
 permissions:
   contents: write
