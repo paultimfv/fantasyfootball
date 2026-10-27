@@ -96,6 +96,13 @@ def cmd_trending(args) -> None:
         print(f"  {t['count']:>7,}  {name} ({pos} {team})")
 
 
+def cmd_site(args) -> None:
+    from . import site
+
+    season = args.season or _season_week(args)[0]
+    print(f"wrote {site.build(season, Path(args.out))}")
+
+
 def main(argv=None) -> None:
     _load_dotenv()
     p = argparse.ArgumentParser(prog="ff", description="Learn fantasy football from real data.")
@@ -141,6 +148,12 @@ def main(argv=None) -> None:
     sp.add_argument("--hours", type=int, default=24)
     sp.add_argument("-n", type=int, default=15)
     sp.set_defaults(fn=cmd_trending)
+
+    sp = sub.add_parser("site", help="build the web page with the latest stats")
+    sp.add_argument("--season", type=int)
+    sp.add_argument("--week", type=int, help=argparse.SUPPRESS)
+    sp.add_argument("--out", default="web/index.html")
+    sp.set_defaults(fn=cmd_site)
 
     args = p.parse_args(argv)
     args.fn(args)

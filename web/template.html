@@ -1,0 +1,371 @@
+<title>Sunday Scorebook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a coach's scorebook. Controls on top, leaderboard beside the selected player's card, then the rulebook and glossary. */
+:root {
+  --bg: #f2f5f1;
+  --surface: #ffffff;
+  --ink: #15201a;
+  --muted: #5b6a60;
+  --line: #d6ded8;
+  --turf: #1d6b43;
+  --turf-soft: #e1eee6;
+  --pylon: #d9561a;
+  --pylon-soft: #fbe6da;
+  --display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1511; --surface: #151f19; --ink: #e5ece7; --muted: #92a298; --line: #28362e;
+    --turf: #4fbf83; --turf-soft: #1b3326; --pylon: #ff8b4f; --pylon-soft: #3a2418; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1511; --surface: #151f19; --ink: #e5ece7; --muted: #92a298; --line: #28362e;
+  --turf: #4fbf83; --turf-soft: #1b3326; --pylon: #ff8b4f; --pylon-soft: #3a2418; color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.05; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); text-transform: uppercase; }
+h2 { font-size: 1.6rem; text-transform: uppercase; }
+h3 { font-size: 1.25rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+
+header { padding-top: 28px; display: grid; gap: 8px; }
+/* yard-line hash marks under the masthead */
+.hashes { height: 10px; background: repeating-linear-gradient(90deg, var(--line) 0 2px, transparent 2px 22px); border-bottom: 2px solid var(--line); }
+.lede { max-width: 62ch; color: var(--muted); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: end; }
+.control { display: grid; gap: 6px; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button {
+  font: 600 0.95rem var(--body); padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.seg button[aria-pressed="true"] { background: var(--turf); border-color: var(--turf); color: var(--bg); }
+.seg button:focus-visible, input:focus-visible, .lb tbody tr:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+.legend { display: flex; gap: 14px; font-size: 0.85rem; color: var(--muted); flex-wrap: wrap; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.sw.vol { background: var(--turf); } .sw.td { background: var(--pylon); }
+
+.scroll { overflow-x: auto; }
+.lb { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.lb th { text-align: left; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.lb td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.lb tbody tr { cursor: pointer; }
+.lb tbody tr:hover { background: var(--turf-soft); }
+.lb tbody tr[aria-selected="true"] { background: var(--turf-soft); box-shadow: inset 3px 0 0 var(--turf); }
+.lb .rk { color: var(--muted); width: 2ch; }
+.lb .pts { font-family: var(--display); font-size: 1.15rem; font-weight: 700; text-align: right; }
+.who b { font-weight: 600; } .who span { color: var(--muted); font-size: 0.85rem; margin-left: 6px; }
+.split { display: flex; height: 8px; width: 110px; border-radius: 2px; overflow: hidden; background: var(--line); }
+.split i { display: block; height: 100%; }
+.split .v { background: var(--turf); } .split .t { background: var(--pylon); }
+.tdp { font-size: 0.8rem; color: var(--muted); }
+
+.search { display: flex; gap: 8px; }
+.search input { flex: 1; min-width: 0; font: 1rem var(--body); padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.pname { font-size: 2rem; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 0.8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--turf-soft); color: var(--turf); }
+.chip.hot { background: var(--pylon-soft); color: var(--pylon); }
+
+.math { font-family: var(--mono); font-size: 0.85rem; border-collapse: collapse; width: 100%; }
+.math td { padding: 3px 0; }
+.math td.n, .math td.p { text-align: right; font-variant-numeric: tabular-nums; }
+.math tr.td td.p { color: var(--pylon); }
+.math tr.tot td { border-top: 1px solid var(--ink); font-weight: 500; padding-top: 6px; }
+.note { font-size: 0.95rem; border-left: 3px solid var(--pylon); padding-left: 10px; }
+.note.vol { border-color: var(--turf); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+.stat b { display: block; font-family: var(--display); font-size: 1.5rem; line-height: 1.1; }
+.stat span { font-size: 0.78rem; color: var(--muted); }
+
+svg text { fill: var(--muted); font: 11px var(--body); }
+svg .val { fill: var(--ink); font-weight: 600; }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .bv { fill: var(--turf); } svg .bt { fill: var(--pylon); }
+svg .sel { stroke: var(--ink); stroke-width: 1.5; fill: none; }
+
+.lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.rules td, .rules th { text-align: right; padding: 6px 8px; }
+.rules td:first-child, .rules th:first-child { text-align: left; }
+.rules th.on, .rules td.on { color: var(--turf); font-weight: 600; }
+dl { margin: 0; display: grid; gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 6px; }
+dt { font-weight: 600; }
+dd { margin: 2px 0 0; color: var(--muted); max-width: 62ch; }
+footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 4px; }
+footer a { color: var(--turf); }
+
+@media (max-width: 860px) { .main, .lower { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .split { width: 64px; } .lb .who span { display: block; margin-left: 0; } }
+@media (prefers-reduced-motion: no-preference) { .split i, svg rect { transition: width .25s, height .25s, y .25s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="label" id="eyebrow"></span>
+    <h1>Sunday Scorebook</h1>
+    <p class="lede">Every fantasy point from real NFL games, explained. Pick a week and a scoring format, then click any player to see exactly how his points added up and whether they came from volume (repeatable) or touchdowns (luck-heavy).</p>
+    <div class="hashes" aria-hidden="true"></div>
+  </header>
+
+  <div class="controls">
+    <div class="control"><span class="label" id="lbl-week">Week</span><div class="seg" id="weeks" role="group" aria-labelledby="lbl-week"></div></div>
+    <div class="control"><span class="label" id="lbl-fmt">Scoring</span><div class="seg" id="fmts" role="group" aria-labelledby="lbl-fmt"></div></div>
+    <div class="control"><span class="label" id="lbl-pos">Position</span><div class="seg" id="poss" role="group" aria-labelledby="lbl-pos"></div></div>
+  </div>
+
+  <div class="main">
+    <section class="panel" aria-labelledby="lb-title">
+      <div class="panel-head">
+        <h2 id="lb-title">Top scorers</h2>
+        <div class="legend"><span><i class="sw vol"></i>volume points</span><span><i class="sw td"></i>touchdown points</span></div>
+      </div>
+      <div class="scroll">
+        <table class="lb">
+          <thead><tr><th>#</th><th>Player</th><th>Where the points came from</th><th style="text-align:right">Pts</th></tr></thead>
+          <tbody id="lb"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="pname" id="card">
+      <div class="search">
+        <input id="q" list="names" placeholder="Find any player" aria-label="Find any player" autocomplete="off">
+        <datalist id="names"></datalist>
+      </div>
+      <div>
+        <h2 class="pname" id="pname"></h2>
+        <p class="muted" id="pmeta"></p>
+      </div>
+      <div id="pweek"></div>
+      <div>
+        <div class="panel-head"><h3>Season so far</h3><span class="label">bars: points per week</span></div>
+        <div id="chart"></div>
+      </div>
+      <div class="stats" id="pstats"></div>
+    </section>
+  </div>
+
+  <div class="lower">
+    <section class="panel" aria-labelledby="rules-title">
+      <h2 id="rules-title">The rulebook</h2>
+      <p class="muted">Points per unit in each format. Your friends' league uses one of these, possibly with tweaks. The only difference between formats is catches.</p>
+      <div class="scroll"><table class="lb rules" id="rules"></table></div>
+      <p class="note vol">Rule of thumb: <b>targets and carries repeat week to week, touchdowns don't.</b> A player whose points are mostly orange had a lucky week. Mostly green means the opportunity is real.</p>
+    </section>
+    <section class="panel" aria-labelledby="gl-title">
+      <div class="panel-head"><h2 id="gl-title">Group chat glossary</h2></div>
+      <input id="gq" class="search-input" placeholder="Search terms (FAAB, handcuff...)" aria-label="Search glossary" style="font:1rem var(--body);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)">
+      <dl id="gloss"></dl>
+    </section>
+  </div>
+
+  <footer>
+    <span id="foot"></span>
+    <span>Stats: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener">nflverse</a>. Scoring checked against nflverse's own fantasy points. Kickers and team defenses aren't included yet.</span>
+  </footer>
+</div>
+
+<script>
+const D = /*__DATA__*/null;
+const FMTS = [["standard", "Standard"], ["half", "Half PPR"], ["ppr", "PPR"]];
+const POS = ["All", "QB", "RB", "WR", "TE"];
+const R = D.rules, NR = R.length, U = 4 + NR;
+const TD_RULES = R.map((r, i) => r.label.includes("TD") ? i : -1).filter(i => i >= 0);
+const weeks = [...new Set(D.rows.map(r => r[1]))].sort((a, b) => a - b);
+const lastWeek = weeks[weeks.length - 1];
+
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+const S = { week: lastWeek, fmt: store.get("ss-fmt", "ppr"), pos: "All", player: null };
+if (!FMTS.some(f => f[0] === S.fmt)) S.fmt = "ppr";
+
+const byPlayer = new Map();
+for (const r of D.rows) { if (!byPlayer.has(r[0])) byPlayer.set(r[0], []); byPlayer.get(r[0]).push(r); }
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt1 = x => (Math.round(x * 10) / 10).toFixed(1);
+const cnt = x => Number.isInteger(x) ? String(x) : fmt1(x);
+const usage = (r, k) => r[U + D.usage.indexOf(k)] || 0;
+
+function score(r) {
+  let total = 0, td = 0;
+  for (let i = 0; i < NR; i++) {
+    const p = r[4 + i] * R[i].pts[S.fmt];
+    total += p;
+    if (TD_RULES.includes(i)) td += p;
+  }
+  return { total: Math.round(total * 100) / 100, td, vol: total - td };
+}
+
+function seg(el, items, key, onPick) {
+  el.innerHTML = "";
+  for (const [val, text] of items) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = text;
+    b.setAttribute("aria-pressed", String(S[key] === val));
+    b.onclick = () => { S[key] = val; onPick(val); render(); };
+    el.appendChild(b);
+  }
+}
+
+function renderControls() {
+  seg(document.getElementById("weeks"), weeks.map(w => [w, String(w)]), "week", () => {});
+  seg(document.getElementById("fmts"), FMTS, "fmt", v => store.set("ss-fmt", v));
+  seg(document.getElementById("poss"), POS.map(p => [p, p]), "pos", () => {});
+}
+
+function renderLeaders() {
+  const rows = D.rows.filter(r => r[1] === S.week && (S.pos === "All" || D.players[r[0]][1] === S.pos))
+    .map(r => ({ r, s: score(r) })).sort((a, b) => b.s.total - a.s.total).slice(0, 25);
+  if (S.player === null && rows.length) S.player = rows[0].r[0];
+  const max = Math.max(1, ...rows.map(x => x.s.total));
+  const tb = document.getElementById("lb");
+  tb.innerHTML = rows.map(({ r, s }, i) => {
+    const [name, pos] = D.players[r[0]];
+    const v = Math.max(0, s.vol), t = Math.max(0, s.td);
+    const share = s.total > 0 ? Math.round(100 * t / s.total) : 0;
+    return `<tr tabindex="0" data-p="${r[0]}" aria-selected="${r[0] === S.player}">
+      <td class="rk num">${i + 1}</td>
+      <td class="who"><b>${esc(name)}</b><span>${pos} ${esc(r[2])}</span></td>
+      <td><div class="split" title="${share}% from touchdowns"><i class="v" style="width:${100 * v / max}%"></i><i class="t" style="width:${100 * t / max}%"></i></div><span class="tdp">${share}% TD</span></td>
+      <td class="pts num">${fmt1(s.total)}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" class="muted">No games recorded for this week yet.</td></tr>`;
+  tb.querySelectorAll("tr[data-p]").forEach(tr => {
+    const pick = () => {
+      S.player = +tr.dataset.p; render();
+      // stacked layout: the card is below the table, so bring it into view
+      if (window.matchMedia("(max-width: 860px)").matches) document.getElementById("card").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    tr.onclick = pick;
+    tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
+  });
+  document.getElementById("lb-title").textContent = `Week ${S.week} top scorers`;
+}
+
+function verdict(s) {
+  if (s.total <= 0) return ["", "A rough day: no positive points."];
+  const share = s.td / s.total;
+  if (share >= 0.5) return ["", `${Math.round(share * 100)}% of these points came from touchdowns. That's a boom week, and touchdowns are the hardest thing to repeat. Expect less next week unless his usage backs it up.`];
+  if (share === 0) return ["vol", "No touchdowns: every point came from volume. That's the repeatable kind. If he scores a TD next week, he jumps."];
+  return ["vol", `${Math.round(share * 100)}% of points from touchdowns, the rest from volume. A healthy mix.`];
+}
+
+function renderPlayer() {
+  const pi = S.player;
+  if (pi === null) return;
+  const [name, pos] = D.players[pi];
+  const games = byPlayer.get(pi) || [];
+  const row = games.find(r => r[1] === S.week);
+  const team = (row || games[games.length - 1] || [])[2] || "";
+  document.getElementById("pname").textContent = name;
+  document.getElementById("pmeta").textContent = `${pos}, ${team}`;
+
+  const pw = document.getElementById("pweek");
+  if (!row) {
+    pw.innerHTML = `<p class="muted">Didn't record a stat in week ${S.week} (bye, injury, or inactive). Pick another week or look at his season below.</p>`;
+  } else {
+    const s = score(row);
+    const lines = R.map((rule, i) => ({ rule, i, n: row[4 + i] }))
+      .filter(x => x.n)
+      .map(x => `<tr class="${TD_RULES.includes(x.i) ? "td" : ""}"><td class="n">${cnt(x.n)}</td><td>&nbsp;${esc(x.rule.label)}</td><td class="n">&times; ${x.rule.pts[S.fmt]}</td><td class="p">${fmt1(rule_pts(x))}</td></tr>`).join("");
+    const u = [];
+    if (usage(row, "attempts")) u.push(`${usage(row, "completions")}/${usage(row, "attempts")} passing`);
+    if (usage(row, "carries")) u.push(`${usage(row, "carries")} carries`);
+    if (usage(row, "targets")) {
+      const ts = usage(row, "target_share");
+      u.push(`${usage(row, "targets")} targets${ts ? ` (${Math.round(ts * 100)}% of team's)` : ""}`);
+    }
+    const [cls, text] = verdict(s);
+    pw.innerHTML = `<div style="display:grid;gap:12px">
+      <div class="panel-head"><h3>Week ${S.week} vs ${esc(row[3])}</h3><span class="label">${FMTS.find(f => f[0] === S.fmt)[1]}</span></div>
+      <div class="scroll"><table class="math">${lines}<tr class="tot"><td></td><td>&nbsp;total</td><td></td><td class="p">${fmt1(s.total)}</td></tr></table></div>
+      <div class="chips">${u.map(x => `<span class="chip">${esc(x)}</span>`).join("")}</div>
+      <p class="note ${cls}">${text}</p></div>`;
+  }
+
+  renderChart(games);
+
+  const scored = games.map(score);
+  const tot = scored.reduce((a, s) => a + s.total, 0), td = scored.reduce((a, s) => a + Math.max(0, s.td), 0);
+  const avg = k => games.length ? games.reduce((a, r) => a + usage(r, k), 0) / games.length : 0;
+  const st = [["games", games.length], ["pts / game", games.length ? fmt1(tot / games.length) : "0"], ["from TDs", tot > 0 ? Math.round(100 * td / tot) + "%" : "0%"]];
+  if (pos === "QB") st.push(["pass att / game", fmt1(avg("attempts"))]);
+  if (pos === "RB" || pos === "QB") st.push(["carries / game", fmt1(avg("carries"))]);
+  if (pos !== "QB") st.push(["targets / game", fmt1(avg("targets"))]);
+  document.getElementById("pstats").innerHTML = st.map(([k, v]) => `<div class="stat"><b class="num">${v}</b><span>${k}</span></div>`).join("");
+  document.getElementById("q").value = "";
+}
+function rule_pts(x) { return x.n * x.rule.pts[S.fmt]; }
+
+function renderChart(games) {
+  const W = 400, H = 170, L = 26, B = 22, T = 16, n = weeks.length;
+  const data = weeks.map(w => { const r = games.find(g => g[1] === w); return { w, s: r ? score(r) : null }; });
+  const top = Math.max(10, Math.ceil(Math.max(0, ...data.map(d => d.s ? d.s.total : 0)) / 10) * 10);
+  const y = v => T + (H - T - B) * (1 - v / top);
+  const slot = (W - L) / n, bw = Math.min(30, slot * 0.6);
+  let g = "";
+  for (let v = 0; v <= top; v += top > 40 ? 20 : 10) g += `<line class="grid" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 5}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  for (const [i, d] of data.entries()) {
+    const x = L + slot * i + (slot - bw) / 2, cx = x + bw / 2;
+    g += `<text x="${cx}" y="${H - 6}" text-anchor="middle">W${d.w}</text>`;
+    if (!d.s) { g += `<text x="${cx}" y="${y(0) - 4}" text-anchor="middle">-</text>`; continue; }
+    const v = Math.max(0, d.s.vol), t = Math.max(0, d.s.td);
+    g += `<rect class="bv" x="${x}" width="${bw}" y="${y(v)}" height="${y(0) - y(v)}"/>`;
+    g += `<rect class="bt" x="${x}" width="${bw}" y="${y(v + t)}" height="${y(v) - y(v + t)}"/>`;
+    if (d.w === S.week) g += `<rect class="sel" x="${x - 3}" width="${bw + 6}" y="${y(v + t) - 3}" height="${y(0) - y(v + t) + 3}"/>`;
+    g += `<text class="val" x="${cx}" y="${y(v + t) - 6}" text-anchor="middle">${fmt1(d.s.total)}</text>`;
+  }
+  document.getElementById("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Fantasy points by week, split into volume and touchdown points">${g}</svg>`;
+}
+
+function renderRules() {
+  const head = `<thead><tr><th>Stat</th>${FMTS.map(([k, t]) => `<th class="${k === S.fmt ? "on" : ""}">${t}</th>`).join("")}</tr></thead>`;
+  const body = R.map(r => `<tr><td>${esc(r.label)}</td>${FMTS.map(([k]) => `<td class="num ${k === S.fmt ? "on" : ""}">${r.pts[k]}</td>`).join("")}</tr>`).join("");
+  document.getElementById("rules").innerHTML = head + `<tbody>${body}</tbody>`;
+}
+
+function renderGlossary() {
+  const q = document.getElementById("gq").value.trim().toLowerCase();
+  const items = Object.entries(D.glossary).filter(([k, v]) => !q || k.toLowerCase().includes(q) || v.toLowerCase().includes(q));
+  document.getElementById("gloss").innerHTML = items.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("") || `<p class="muted">No match. Try a shorter word.</p>`;
+}
+
+function render() { renderControls(); renderLeaders(); renderPlayer(); renderRules(); }
+
+document.getElementById("eyebrow").textContent = `${D.season} season, through week ${lastWeek}`;
+document.getElementById("foot").textContent = `Data built ${D.built} from ${D.rows.length.toLocaleString()} player-games.`;
+document.getElementById("names").innerHTML = D.players.map(p => `<option value="${esc(p[0])}">`).join("");
+document.getElementById("q").addEventListener("change", e => {
+  const i = D.players.findIndex(p => p[0].toLowerCase() === e.target.value.trim().toLowerCase());
+  if (i >= 0) { S.player = i; render(); }
+});
+document.getElementById("gq").addEventListener("input", renderGlossary);
+render();
+renderGlossary();
+</script>
