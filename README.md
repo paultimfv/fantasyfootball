@@ -1,12 +1,12 @@
-# ff: learn fantasy football from real data
+# Sunday Scorebook
 
-A small command line tool for learning how fantasy football works using real NFL stats,
+Learn fantasy football from real data. A small command line tool (`ff`) and a web page for learning how fantasy football works using real NFL stats,
 and for following a real league (ESPN or Sleeper) week by week.
 
 ## Setup
 
 ```bash
-cd fantasy
+git clone https://github.com/paultimfv/sunday-scorebook.git && cd sunday-scorebook
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest            # 17 tests, all offline
@@ -38,6 +38,17 @@ The recap shows each matchup, the best starter on each team, points left on the 
 (the best lineup in hindsight minus what was actually started), and whether a loser
 would have won with their best lineup. That's most of what a group chat argues about on Monday.
 
+## Web page
+
+```bash
+python -m ff site          # writes web/index.html with the latest stats
+```
+
+One self-contained HTML file: weekly leaders split into volume vs touchdown points,
+a per-player scoring breakdown and season chart, the rulebook and the glossary.
+Open it in a browser. It scores in the browser from the same rules as `ff/scoring.py`,
+so switching formats needs no rebuild. Rerun the command after each NFL week.
+
 ## Getting your friends' ESPN league
 
 1. **League id**: the `leagueId=` number in the league's URL on fantasy.espn.com.
@@ -49,7 +60,7 @@ would have won with their best lineup. That's most of what a group chat argues a
    - `espn_s2`
    - `SWID` (including the curly braces)
 
-   Put them in `fantasy/.env` (git ignores it):
+   Put them in a `.env` file at the repo root (git ignores it):
 
    ```
    ESPN_LEAGUE_ID=123456
@@ -77,7 +88,9 @@ ff/recap.py     provider-neutral weekly recap
 ff/espn.py      ESPN adapter
 ff/sleeper.py   Sleeper adapter
 ff/glossary.py  the vocabulary
+ff/site.py      builds the web page
 ff/cli.py       commands
+web/template.html  the web page (data is injected by site.py)
 ```
 
 ## Roadmap
@@ -86,4 +99,4 @@ ff/cli.py       commands
   "sell high / buy low" flags for players whose TDs run ahead of or behind their volume.
 - **Phase 3, simulator**: model each player's week as a distribution and run a Monte Carlo
   of every matchup for win probability, then the rest of the season for playoff odds.
-- **Later**: a small web view to share with friends.
+- **Later**: a shareable, hosted version of the web page.

@@ -2,3 +2,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 web/index.html
+.env
+.env.*
+.DS_Store
