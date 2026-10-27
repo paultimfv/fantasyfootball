@@ -216,7 +216,10 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const FMT_KEY = `ss-fmt-${D.sport}`;
-const S = { week: lastWeek, fmt: store.get(FMT_KEY, D.default_fmt), pos: "All", player: null };
+// open on the latest week that has mostly been played, not one that started yesterday
+const rowsIn = w => D.rows.filter(r => r[1] === w).length;
+const startWeek = weeks.length > 1 && rowsIn(lastWeek) < 0.5 * rowsIn(weeks[weeks.length - 2]) ? weeks[weeks.length - 2] : lastWeek;
+const S = { week: startWeek, fmt: store.get(FMT_KEY, D.default_fmt), pos: "All", player: null };
 if (!FMTS.some(f => f[0] === S.fmt)) S.fmt = D.default_fmt;
 
 const byPlayer = new Map();
